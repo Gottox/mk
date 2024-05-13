@@ -39,7 +39,8 @@ impl MkInfo {
 
     pub fn from_path(path: &Path) -> Result<Self> {
         let reader = std::fs::File::open(path)?;
-        let mkinfo = serde_yaml::from_reader(reader)?;
+        let mkinfo = serde_yaml::from_reader(reader)
+            .map_err(|x| Error::SerdeYaml(path.into(), x))?;
 
         return Ok(mkinfo);
     }

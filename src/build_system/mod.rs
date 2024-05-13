@@ -1,5 +1,7 @@
 mod cargo;
+mod make;
 mod meson;
+mod cmake;
 
 use std::fmt::Debug;
 use std::path::Path;
@@ -7,7 +9,8 @@ use std::path::Path;
 use crate::project::Project;
 use crate::Result;
 
-pub static BUILD_SYSTEMS: &[&dyn BuildSystem] = &[&meson::Meson, &cargo::Cargo];
+pub static BUILD_SYSTEMS: &[&dyn BuildSystem] =
+    &[&meson::Meson, &cargo::Cargo, &cmake::CMake, &make::Make];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RootIdentificationResult {

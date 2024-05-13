@@ -39,6 +39,7 @@ impl BuildSystem for Meson {
         }
         Ok(RootIdentificationResult::IsRoot)
     }
+
     fn is_configured(&self, project: &Project) -> crate::Result<bool> {
         Ok(project.build_dir.join("build.ninja").is_file())
     }

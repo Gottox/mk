@@ -12,18 +12,18 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("Conflicting Mk files: {0} and {1}")]
-    ConflictingMk(PathBuf, PathBuf),
-    #[error("No project root found")]
-    NoProjectRootFound,
-    #[error("serde_ini error: {0}")]
-    SerdeIni(#[from] serde_ini::de::Error),
-    #[error("serde_yaml error: {0}")]
-    SerdeYaml(#[from] serde_yaml::Error),
     #[error("No build system found")]
     NoBuildSystemFound,
+    #[error("No project root found")]
+    NoProjectRootFound,
+    #[error("Conflicting Mk files: {0} and {1}")]
+    ConflictingMk(PathBuf, PathBuf),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("{0}: {1}")]
+    SerdeIni(PathBuf, serde_ini::de::Error),
+    #[error("{0}: {1}")]
+    SerdeYaml(PathBuf, serde_yaml::Error),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

@@ -1,4 +1,4 @@
-use crate::Result;
+use crate::{Error, Result};
 use std::path::Path;
 
 use serde::Deserialize;
@@ -14,7 +14,8 @@ impl EditorConfig {
     pub fn from_file(path: &Path) -> Result<Self> {
         let file = std::fs::File::open(path)?;
         let reader = std::io::BufReader::new(file);
-        let config = serde_ini::from_read(reader)?;
+        let config = serde_ini::from_read(reader)
+            .map_err(|x| Error::SerdeIni(path.into(), x))?;
         Ok(config)
     }
 }
