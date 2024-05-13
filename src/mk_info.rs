@@ -42,6 +42,6 @@ impl MkInfo {
         let mkinfo = serde_yaml::from_reader(reader)
             .map_err(|x| Error::SerdeYaml(path.into(), x))?;
 
-        return Ok(mkinfo);
+        Ok(mkinfo)
     }
 }

@@ -1,7 +1,7 @@
 mod cargo;
+mod cmake;
 mod make;
 mod meson;
-mod cmake;
 
 use std::fmt::Debug;
 use std::path::Path;

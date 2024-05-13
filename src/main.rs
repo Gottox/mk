@@ -55,7 +55,7 @@ fn try_main() -> Result<()> {
         return Ok(fs::remove_dir_all(&project.build_dir)?);
     }
 
-    if project.is_configured()? == false {
+    if !project.is_configured()? {
         project.configure()?;
     }
 

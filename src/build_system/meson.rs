@@ -29,9 +29,7 @@ impl BuildSystem for Meson {
         for line in meson.lines() {
             let line = line?;
             let line = line.trim();
-            if line.is_empty() {
-                continue;
-            } else if line.starts_with("#") {
+            if line.is_empty() || line.starts_with('#') {
                 continue;
             } else if line.starts_with("project") {
                 return Ok(RootIdentificationResult::IsRoot);

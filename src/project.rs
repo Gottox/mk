@@ -12,14 +12,13 @@ use std::{
 
 use crate::{build_system::BuildSystem, Opts};
 
-const VCS_ROOT_DIRS: &'static [&'static str] =
-    &[".git", ".hg", "_darcs", ".bzr"];
-const VCS_TIL_ROOT_DIRS: &'static [&'static str] = &[".svn", "CVS"];
+const VCS_ROOT_DIRS: &[&str] = &[".git", ".hg", "_darcs", ".bzr"];
+const VCS_TIL_ROOT_DIRS: &[&str] = &[".svn", "CVS"];
 
 fn has_root_editor_config(path: &Path) -> Result<bool> {
     path.join(".editorconfig")
         .exists()
-        .then(|| EditorConfig::from_file(&path).map(|x| x.root))
+        .then(|| EditorConfig::from_file(path).map(|x| x.root))
         .unwrap_or(Ok(false))
 }
 
@@ -94,7 +93,7 @@ impl Project {
             .mk_build_dir
             .or(mk_info.build_dir)
             .unwrap_or_else(|| "build".into());
-        let build_dir = project_dir.join(&build_dir);
+        let build_dir = project_dir.join(build_dir);
         let args = opts.args.or(mk_info.default).unwrap_or_default();
 
         Ok(Self {
@@ -115,12 +114,12 @@ impl Project {
         Ok(())
     }
     pub fn build(&self) -> Result<()> {
-        let cmd = self.build_system.build_command(&self);
+        let cmd = self.build_system.build_command(self);
         self.run(&cmd)
     }
 
     pub fn configure(&self) -> Result<()> {
-        let cmd = self.build_system.configure_command(&self);
+        let cmd = self.build_system.configure_command(self);
         if cmd.len() > 1 {
             self.run(&cmd)
         } else {
@@ -129,6 +128,6 @@ impl Project {
     }
 
     pub fn is_configured(&self) -> Result<bool> {
-        self.build_system.is_configured(&self)
+        self.build_system.is_configured(self)
     }
 }
