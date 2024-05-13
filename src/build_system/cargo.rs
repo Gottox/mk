@@ -12,12 +12,13 @@ impl BuildSystem for Cargo {
         &self,
         path: &std::path::Path,
     ) -> Result<RootIdentificationResult> {
-        let cargo_toml_path = path.join("Cargo.toml");
+        use RootIdentificationResult::*;
 
+        let cargo_toml_path = path.join("Cargo.toml");
         Ok(if cargo_toml_path.is_file() {
-            RootIdentificationResult::MaybeRoot
+            MaybeRoot
         } else {
-            RootIdentificationResult::NotRoot
+            NotRoot
         })
     }
     fn is_configured(&self, _project: &Project) -> crate::Result<bool> {

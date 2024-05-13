@@ -12,12 +12,13 @@ impl BuildSystem for Make {
         &self,
         path: &std::path::Path,
     ) -> Result<RootIdentificationResult> {
-        let makefile_path = path.join("Makefile");
+        use RootIdentificationResult::*;
 
+        let makefile_path = path.join("Makefile");
         Ok(if makefile_path.is_file() {
-            RootIdentificationResult::MaybeRoot
+            MaybeRoot
         } else {
-            RootIdentificationResult::NotRoot
+            NotRoot
         })
     }
 

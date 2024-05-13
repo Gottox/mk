@@ -13,17 +13,17 @@ impl BuildSystem for Meson {
         &self,
         path: &std::path::Path,
     ) -> crate::Result<super::RootIdentificationResult> {
-        let meson_path = path.join("meson.build");
+        use RootIdentificationResult::*;
+
         let meson_options_path = path.join("meson_options.txt");
-
         if meson_options_path.exists() {
-            return Ok(RootIdentificationResult::IsRoot);
+            return Ok(IsRoot);
         }
 
+        let meson_path = path.join("meson.build");
         if !meson_path.exists() {
-            return Ok(RootIdentificationResult::NotRoot);
+            return Ok(NotRoot);
         }
-
         let meson = File::open(meson_path)?;
         let meson = std::io::BufReader::new(meson);
         for line in meson.lines() {
@@ -32,10 +32,10 @@ impl BuildSystem for Meson {
             if line.is_empty() || line.starts_with('#') {
                 continue;
             } else if line.starts_with("project") {
-                return Ok(RootIdentificationResult::IsRoot);
+                return Ok(IsRoot);
             }
         }
-        Ok(RootIdentificationResult::IsRoot)
+        Ok(MaybeRoot)
     }
 
     fn is_configured(&self, project: &Project) -> crate::Result<bool> {

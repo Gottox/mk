@@ -10,12 +10,13 @@ impl BuildSystem for CMake {
         &self,
         path: &std::path::Path,
     ) -> crate::Result<super::RootIdentificationResult> {
-        let cmakelists_path = path.join("CMakeLists.txt");
+        use RootIdentificationResult::*;
 
+        let cmakelists_path = path.join("CMakeLists.txt");
         if cmakelists_path.exists() {
-            Ok(RootIdentificationResult::IsRoot)
+            Ok(IsRoot)
         } else {
-            Ok(RootIdentificationResult::NotRoot)
+            Ok(NotRoot)
         }
     }
     fn is_configured(&self, project: &Project) -> crate::Result<bool> {
