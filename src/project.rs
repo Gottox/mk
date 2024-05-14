@@ -65,11 +65,11 @@ pub fn find_root(path: &Path) -> Result<RootInfo> {
         for build_system in BUILD_SYSTEMS {
             match build_system.is_project_root(candidate)? {
                 IsRoot => {
-                    return Ok(RootInfo::new(Some(*build_system), &candidate))
+                    return Ok(RootInfo::new(Some(*build_system), candidate))
                 }
                 MaybeRoot => {
                     maybe_build_system =
-                        Some(RootInfo::new(Some(*build_system), &candidate));
+                        Some(RootInfo::new(Some(*build_system), candidate));
                 }
                 NotRoot => {}
             }
@@ -83,7 +83,7 @@ pub fn find_root(path: &Path) -> Result<RootInfo> {
             MaybeRoot => {
                 maybe_root = true;
                 if maybe_build_system.is_none() {
-                    maybe_build_system = Some(RootInfo::new(None, &candidate))
+                    maybe_build_system = Some(RootInfo::new(None, candidate))
                 }
             }
             NotRoot => {
