@@ -4,14 +4,27 @@ use crate::{Error, Result};
 use serde::Deserialize;
 
 pub static MKINFO_FILES: &[&str] = &[
-    ".Mk", ".Mk.yaml", ".Mk.yml", ".mk", ".mk.yaml", ".mk.yml", "Mk",
-    "Mk.yaml", "Mk.yml",
+    ".Mk",
+    ".Mk.yaml",
+    ".Mk.yml",
+    ".github/mk",
+    ".github/mk.yaml",
+    ".github/mk.yml",
+    ".github/Mk",
+    ".github/Mk.yaml",
+    ".github/Mk.yml",
+    ".mk",
+    ".mk.yaml",
+    ".mk.yml",
+    "Mk",
+    "Mk.yaml",
+    "Mk.yml",
 ];
 
 #[derive(Debug, Deserialize, Default)]
 pub struct MkInfo {
     pub image: Option<String>,
-    pub default: Option<Vec<String>>,
+    pub default: Vec<String>,
     pub configure: Option<Vec<String>>,
     pub build_system: Option<String>,
     pub build_dir: Option<PathBuf>,
@@ -39,9 +52,7 @@ impl MkInfo {
 
     pub fn from_path(path: &Path) -> Result<Self> {
         let reader = std::fs::File::open(path)?;
-        let mkinfo = serde_yaml::from_reader(reader)
-            .map_err(|x| Error::SerdeYaml(path.into(), x))?;
-
-        Ok(mkinfo)
+        serde_yaml::from_reader(reader)
+            .map_err(|x| Error::SerdeYaml(path.into(), x))
     }
 }

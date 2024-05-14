@@ -19,6 +19,16 @@ pub enum RootIdentificationResult {
     MaybeRoot,
 }
 
+pub fn build_system_from_str(name: &str) -> Option<&'static dyn BuildSystem> {
+    match name {
+        "cargo" => Some(&cargo::Cargo),
+        "cmake" => Some(&cmake::CMake),
+        "make" => Some(&make::Make),
+        "meson" => Some(&meson::Meson),
+        _ => None,
+    }
+}
+
 pub trait BuildSystem: Debug + Sync {
     fn is_project_root(&self, path: &Path) -> Result<RootIdentificationResult>;
     fn is_configured(&self, project: &Project) -> Result<bool>;

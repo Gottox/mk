@@ -1,5 +1,7 @@
 use crate::{
-    build_system::{RootIdentificationResult, BUILD_SYSTEMS},
+    build_system::{
+        build_system_from_str, RootIdentificationResult, BUILD_SYSTEMS,
+    },
     editor_config::EditorConfig,
     mk_info::MkInfo,
     Error, Result,
@@ -36,19 +38,38 @@ fn is_project_root(path: &Path) -> Result<RootIdentificationResult> {
     })
 }
 
-pub fn find_root(path: &Path) -> Result<(&'static dyn BuildSystem, PathBuf)> {
+pub struct RootInfo {
+    build_system: Option<&'static dyn BuildSystem>,
+    project_dir: PathBuf,
+}
+
+impl RootInfo {
+    fn new(
+        build_system: Option<&'static dyn BuildSystem>,
+        project_dir: &Path,
+    ) -> Self {
+        Self {
+            build_system,
+            project_dir: project_dir.to_path_buf(),
+        }
+    }
+}
+
+pub fn find_root(path: &Path) -> Result<RootInfo> {
     use RootIdentificationResult::*;
     let mut maybe_build_system = None;
-    let mut was_maybe_root = false;
+    let mut maybe_root = false;
 
     for candidate in path.ancestors() {
         let last_maybe_build_system = maybe_build_system.take();
         for build_system in BUILD_SYSTEMS {
             match build_system.is_project_root(candidate)? {
-                IsRoot => return Ok((*build_system, candidate.to_path_buf())),
+                IsRoot => {
+                    return Ok(RootInfo::new(Some(*build_system), &candidate))
+                }
                 MaybeRoot => {
                     maybe_build_system =
-                        Some((*build_system, candidate.to_path_buf()))
+                        Some(RootInfo::new(Some(*build_system), &candidate));
                 }
                 NotRoot => {}
             }
@@ -59,9 +80,14 @@ pub fn find_root(path: &Path) -> Result<(&'static dyn BuildSystem, PathBuf)> {
         }
         match is_project_root(candidate)? {
             IsRoot => break,
-            MaybeRoot => was_maybe_root = true,
+            MaybeRoot => {
+                maybe_root = true;
+                if maybe_build_system.is_none() {
+                    maybe_build_system = Some(RootInfo::new(None, &candidate))
+                }
+            }
             NotRoot => {
-                if was_maybe_root {
+                if maybe_root {
                     break;
                 }
             }
@@ -82,19 +108,34 @@ pub struct Project {
 }
 
 impl Project {
-    pub fn from_opts(opts: Opts) -> Result<Self> {
-        let work_dir = opts.mk_cwd.canonicalize()?;
-        let (build_system, project_dir) = find_root(&work_dir)?;
+    pub fn from_opts(opts: &Opts) -> Result<Self> {
+        let work_dir = opts.cwd.canonicalize()?;
+        let RootInfo {
+            build_system,
+            project_dir,
+        } = find_root(&work_dir)?;
 
         let mk_info = MkInfo::from_root_path(&project_dir)?;
 
         let configure_args = mk_info.configure.unwrap_or_default();
         let build_dir = opts
-            .mk_build_dir
+            .build_dir
+            .clone()
             .or(mk_info.build_dir)
-            .unwrap_or_else(|| "build".into());
+            .unwrap_or("build".into());
         let build_dir = project_dir.join(build_dir);
-        let args = opts.args.or(mk_info.default).unwrap_or_default();
+        let args = if opts.args.is_empty() {
+            mk_info.default
+        } else {
+            opts.args.clone()
+        };
+
+        let build_system = if let Some(build_system) = mk_info.build_system {
+            build_system_from_str(&build_system)
+        } else {
+            build_system
+        }
+        .ok_or(Error::NoBuildSystemFound)?;
 
         Ok(Self {
             project_dir,
