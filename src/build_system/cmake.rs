@@ -28,7 +28,7 @@ impl BuildSystem for CMake {
         command.extend(project.configure_args.clone());
         command.extend([
             "-G".to_string(),
-            "Ninja".to_string(),
+            "Unix Makefiles".to_string(),
             "-S".to_string(),
             project.project_dir.to_string_lossy().to_string(),
             "-B".to_string(),
@@ -39,7 +39,7 @@ impl BuildSystem for CMake {
 
     fn build_command(&self, project: &Project) -> Vec<String> {
         let mut command = vec![
-            "ninja".to_string(),
+            "make".to_string(),
             "-C".to_string(),
             project.build_dir.to_string_lossy().to_string(),
         ];
