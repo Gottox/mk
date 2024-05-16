@@ -37,8 +37,10 @@ pub enum Error {
     NoProjectRootFound,
     #[error("Conflicting Mk files: {0} and {1}")]
     ConflictingMk(PathBuf, PathBuf),
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
+    #[error("{0}: {1}")]
+    Io(PathBuf, std::io::Error),
+    #[error("{0}: {1}")]
+    Command(String, std::io::Error),
     #[error("{0}: {1}")]
     SerdeIni(PathBuf, serde_ini::de::Error),
     #[error("{0}: {1}")]
@@ -117,7 +119,8 @@ fn try_main() -> Result<()> {
     let project = Project::from_opts(&opts)?;
 
     if opts.clean {
-        return Ok(fs::remove_dir_all(&project.build_dir)?);
+        return fs::remove_dir_all(&project.build_dir)
+            .map_err(|e| Error::Io(project.build_dir, e));
     }
 
     if opts.reconfigure || !project.is_configured()? {

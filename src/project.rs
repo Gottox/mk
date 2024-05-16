@@ -109,7 +109,10 @@ pub struct Project {
 
 impl Project {
     pub fn from_opts(opts: &Opts) -> Result<Self> {
-        let work_dir = opts.cwd.canonicalize()?;
+        let work_dir = opts
+            .cwd
+            .canonicalize()
+            .map_err(|e| Error::Io(opts.cwd.clone(), e))?;
         let RootInfo {
             build_system,
             project_dir,
@@ -151,7 +154,8 @@ impl Project {
         Command::new(&command[0])
             .args(command.iter().skip(1))
             .current_dir(&self.work_dir)
-            .status()?;
+            .status()
+            .map_err(|e| Error::Command(command[0].clone(), e))?;
         Ok(())
     }
     pub fn build(&self) -> Result<()> {

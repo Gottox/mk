@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::BufRead;
 
-use crate::project::Project;
+use crate::{project::Project, Error};
 
 use super::{BuildSystem, RootIdentificationResult};
 
@@ -24,10 +24,11 @@ impl BuildSystem for Meson {
         if !meson_path.exists() {
             return Ok(NotRoot);
         }
-        let meson = File::open(meson_path)?;
+        let meson = File::open(&meson_path)
+            .map_err(|e| Error::Io(meson_path.clone(), e))?;
         let meson = std::io::BufReader::new(meson);
         for line in meson.lines() {
-            let line = line?;
+            let line = line.map_err(|e| Error::Io(meson_path.clone(), e))?;
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') {
                 continue;

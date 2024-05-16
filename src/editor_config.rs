@@ -12,10 +12,11 @@ pub struct EditorConfig {
 
 impl EditorConfig {
     pub fn from_file(path: &Path) -> Result<Self> {
-        let file = std::fs::File::open(path)?;
+        let file =
+            std::fs::File::open(path).map_err(|e| Error::Io(path.into(), e))?;
         let reader = std::io::BufReader::new(file);
         let config = serde_ini::from_read(reader)
-            .map_err(|x| Error::SerdeIni(path.into(), x))?;
+            .map_err(|e| Error::SerdeIni(path.into(), e))?;
         Ok(config)
     }
 }
