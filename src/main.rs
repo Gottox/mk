@@ -13,6 +13,22 @@ use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use project::Project;
 use thiserror::Error;
 
+static HELP: &str = r#"Usage: mk [options] [build system args]
+
+Options:
+    -mw: Watch for changes and rebuild
+    -mc: Clean the build directory
+    -mR: Force reconfigure
+    -mC <dir>: Change the current working directory [default: .]
+    -mB <dir>: Change the build directory [default: build]
+
+Supported build systems:
+meson/ninja
+cmake/make
+make
+cargo
+"#;
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("No build system found")]
@@ -56,6 +72,10 @@ impl Opts {
         let mut args_iter = std::env::args().skip(1);
         while let Some(arg) = args_iter.next() {
             match arg.as_str() {
+                "-h" | "--help" => {
+                    println!("{}", HELP);
+                    std::process::exit(0);
+                }
                 "-mw" => watch = true,
                 "-mc" => clean = true,
                 "-mR" => reconfigure = true,
@@ -72,6 +92,10 @@ impl Opts {
                             .ok_or(Error::MissingArgument("-mB"))?
                             .into(),
                     )
+                }
+                "--" => {
+                    args.extend(args_iter);
+                    break;
                 }
                 _ => args.push(arg),
             }
