@@ -1,9 +1,15 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::PathBuf,
+    thread::sleep,
+    time::{Duration, SystemTime},
+};
 pub mod build_system;
 pub mod editor_config;
 pub mod mk_info;
 pub mod project;
 
+use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use project::Project;
 use thiserror::Error;
 
@@ -21,6 +27,8 @@ pub enum Error {
     SerdeIni(PathBuf, serde_ini::de::Error),
     #[error("{0}: {1}")]
     SerdeYaml(PathBuf, serde_yaml::Error),
+    #[error("{0}")]
+    Notify(#[from] notify::Error),
     #[error("Missing Argument for {0}")]
     MissingArgument(&'static str),
 }
@@ -28,11 +36,12 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub struct Opts {
-    clean: bool,
-    reconfigure: bool,
-    cwd: PathBuf,
-    build_dir: Option<PathBuf>,
     args: Vec<String>,
+    build_dir: Option<PathBuf>,
+    clean: bool,
+    cwd: PathBuf,
+    reconfigure: bool,
+    watch: bool,
 }
 
 impl Opts {
@@ -42,10 +51,12 @@ impl Opts {
         let mut args = vec![];
         let mut clean = false;
         let mut reconfigure = false;
+        let mut watch = false;
 
         let mut args_iter = std::env::args().skip(1);
         while let Some(arg) = args_iter.next() {
             match arg.as_str() {
+                "-mw" => watch = true,
                 "-mc" => clean = true,
                 "-mR" => reconfigure = true,
                 "-mC" => {
@@ -67,11 +78,12 @@ impl Opts {
         }
 
         Ok(Self {
-            clean,
-            reconfigure,
-            cwd,
-            build_dir,
             args,
+            build_dir,
+            clean,
+            cwd,
+            reconfigure,
+            watch,
         })
     }
 }
@@ -88,7 +100,25 @@ fn try_main() -> Result<()> {
         project.configure()?;
     }
 
-    project.build()
+    project.build()?;
+
+    if opts.watch {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let mut watcher = RecommendedWatcher::new(tx, Config::default())?;
+        watcher.watch(&project.project_dir, RecursiveMode::Recursive)?;
+
+        let threshold = Duration::from_millis(100);
+        let mut last_build_time = SystemTime::now();
+        for _ in rx {
+            if last_build_time + threshold < SystemTime::now() {
+                sleep(threshold);
+                project.build()?;
+                last_build_time = SystemTime::now();
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn main() {
