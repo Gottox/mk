@@ -38,6 +38,7 @@ jobs:
         use-cross: true
 
   release:
+    permissions: write-all
     needs:
     - build
     runs-on: 'ubuntu-latest'
