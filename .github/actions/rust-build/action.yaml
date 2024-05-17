@@ -16,5 +16,5 @@ runs:
       target: ${{ inputs.target }}
       use-cross: ${{ inputs.use-cross }}
       binaries: mk
-      archive-prefix: neatkube-${{ github.ref_name }}
+      archive-prefix: mk-${{ github.ref_name }}
       extra-files: README.md
