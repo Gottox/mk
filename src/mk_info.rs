@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use crate::{Error, Result};
 use serde::Deserialize;
@@ -24,10 +27,11 @@ pub static MKINFO_FILES: &[&str] = &[
 #[derive(Debug, Deserialize, Default)]
 pub struct MkInfo {
     pub image: Option<String>,
-    pub default: Vec<String>,
+    pub default: Option<Vec<String>>,
     pub configure: Option<Vec<String>>,
     pub build_system: Option<String>,
     pub build_dir: Option<PathBuf>,
+    pub env: Option<HashMap<String, String>>,
 }
 
 impl MkInfo {

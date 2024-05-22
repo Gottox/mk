@@ -7,6 +7,7 @@ use crate::{
     Error, Result,
 };
 use std::{
+    collections::HashMap,
     fmt::Debug,
     path::{Path, PathBuf},
     process::Command,
@@ -76,6 +77,7 @@ pub fn find_root(path: &Path) -> Result<RootInfo> {
         }
 
         if maybe_build_system.is_none() && last_maybe_build_system.is_some() {
+            maybe_build_system = last_maybe_build_system;
             break;
         }
         match is_project_root(candidate)? {
@@ -104,6 +106,7 @@ pub struct Project {
     pub build_dir: PathBuf,
     pub configure_args: Vec<String>,
     pub args: Vec<String>,
+    pub env: HashMap<String, String>,
     pub build_system: &'static (dyn BuildSystem),
 }
 
@@ -128,7 +131,7 @@ impl Project {
             .unwrap_or("build".into());
         let build_dir = project_dir.join(build_dir);
         let args = if opts.args.is_empty() {
-            mk_info.default
+            mk_info.default.unwrap_or_default()
         } else {
             opts.args.clone()
         };
@@ -140,6 +143,8 @@ impl Project {
         }
         .ok_or(Error::NoBuildSystemFound)?;
 
+        let env = mk_info.env.unwrap_or_default();
+
         Ok(Self {
             project_dir,
             work_dir,
@@ -147,12 +152,14 @@ impl Project {
             build_system,
             configure_args,
             args,
+            env,
         })
     }
 
     pub fn run(&self, command: &[String]) -> Result<()> {
         Command::new(&command[0])
             .args(command.iter().skip(1))
+            .envs(&self.env)
             .current_dir(&self.work_dir)
             .status()
             .map_err(|e| Error::Command(command[0].clone(), e))?;
