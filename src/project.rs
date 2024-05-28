@@ -8,6 +8,7 @@ use crate::{
 };
 use std::{
     collections::HashMap,
+    env,
     fmt::Debug,
     path::{Path, PathBuf},
     process::Command,
@@ -121,7 +122,11 @@ impl Project {
             project_dir,
         } = find_root(&work_dir)?;
 
-        let mk_info = MkInfo::from_root_path(&project_dir)?;
+        let mk_info = if let Ok(mk_info) = env::var("MKINFO") {
+            MkInfo::from_path(&PathBuf::from(mk_info))
+        } else {
+            MkInfo::from_root_path(&project_dir)
+        }?;
 
         let configure_args = mk_info.configure.unwrap_or_default();
         let build_dir = opts
