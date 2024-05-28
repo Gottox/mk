@@ -10,6 +10,7 @@ use std::{
     collections::HashMap,
     env,
     fmt::Debug,
+    io,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -161,6 +162,18 @@ impl Project {
         })
     }
 
+    pub fn clean(&self) -> Result<()> {
+        match std::fs::remove_dir_all(&self.build_dir) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                if e.kind() == io::ErrorKind::NotFound {
+                    Ok(())
+                } else {
+                    Err(Error::Io(self.build_dir.clone(), e))
+                }
+            }
+        }
+    }
     pub fn run(&self, command: &[String]) -> Result<()> {
         Command::new(&command[0])
             .args(command.iter().skip(1))

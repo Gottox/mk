@@ -1,5 +1,4 @@
 use std::{
-    fs,
     path::PathBuf,
     thread::sleep,
     time::{Duration, SystemTime},
@@ -75,7 +74,7 @@ impl Opts {
         while let Some(arg) = args_iter.next() {
             match arg.as_str() {
                 "-h" | "--help" => {
-                    println!("{}", HELP);
+                    eprintln!("{}", HELP);
                     std::process::exit(0);
                 }
                 "-mw" => watch = true,
@@ -119,12 +118,12 @@ fn try_main() -> Result<()> {
     let project = Project::from_opts(&opts)?;
 
     if opts.clean {
-        return fs::remove_dir_all(&project.build_dir)
-            .map_err(|e| Error::Io(project.build_dir, e));
+        return project.clean();
     }
 
     if opts.reconfigure || !project.is_configured()? {
-        project.configure()?;
+        project.clean()?;
+        return project.configure();
     }
 
     project.build()?;
