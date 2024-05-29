@@ -1,4 +1,5 @@
 use std::{
+    io::{self, Write},
     path::PathBuf,
     thread::sleep,
     time::{Duration, SystemTime},
@@ -8,6 +9,7 @@ pub mod editor_config;
 pub mod mk_info;
 pub mod project;
 
+use libc::isatty;
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use project::Project;
 use thiserror::Error;
@@ -37,9 +39,9 @@ pub enum Error {
     #[error("Conflicting Mk files: {0} and {1}")]
     ConflictingMk(PathBuf, PathBuf),
     #[error("{0}: {1}")]
-    Io(PathBuf, std::io::Error),
+    Io(PathBuf, io::Error),
     #[error("{0}: {1}")]
-    Command(String, std::io::Error),
+    Command(String, io::Error),
     #[error("{0}: {1}")]
     SerdeIni(PathBuf, serde_ini::de::Error),
     #[error("{0}: {1}")]
@@ -127,14 +129,8 @@ fn try_main() -> Result<()> {
         return project.clean();
     }
 
-    if opts.reconfigure || !project.is_configured()? {
-        project.clean()?;
-        return project.configure();
-    }
-
-    project.build()?;
-
     if opts.watch {
+        run(&project, &opts)?;
         let (tx, rx) = std::sync::mpsc::channel();
         let mut watcher = RecommendedWatcher::new(tx, Config::default())?;
         watcher.watch(&project.project_dir, RecursiveMode::Recursive)?;
@@ -144,13 +140,31 @@ fn try_main() -> Result<()> {
         for _ in rx {
             if last_build_time + threshold < SystemTime::now() {
                 sleep(threshold);
-                project.build()?;
+                run(&project, &opts)?;
                 last_build_time = SystemTime::now();
             }
         }
+    } else {
+        run(&project, &opts)?;
     }
 
     Ok(())
+}
+
+fn run(project: &Project, opts: &Opts) -> Result<()> {
+    // Clear the screen if we're running in watch mode
+    if opts.watch && unsafe { isatty(1) } != 0 {
+        let mut out = io::stdout();
+        let _ = out.write_all(b"\x1b[H\x1b[2J\x1b[3J");
+        let _ = out.flush();
+    }
+
+    if opts.reconfigure || !project.is_configured()? {
+        project.clean()?;
+        project.configure()?;
+    }
+
+    project.build()
 }
 
 fn main() {
