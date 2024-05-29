@@ -71,11 +71,16 @@ impl Opts {
         let mut watch = false;
 
         let mut args_iter = std::env::args().skip(1);
+        let mut is_first = true;
         while let Some(arg) = args_iter.next() {
             match arg.as_str() {
                 "-h" | "--help" => {
-                    eprintln!("{}", HELP);
-                    std::process::exit(0);
+                    if is_first {
+                        eprintln!("{}", HELP);
+                        std::process::exit(0);
+                    } else {
+                        args.push(arg);
+                    }
                 }
                 "-mw" => watch = true,
                 "-mc" => clean = true,
@@ -100,6 +105,7 @@ impl Opts {
                 }
                 _ => args.push(arg),
             }
+            is_first = false;
         }
 
         Ok(Self {
