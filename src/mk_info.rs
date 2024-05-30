@@ -30,28 +30,30 @@ pub struct MkInfo {
     pub default: Option<Vec<String>>,
     pub configure: Option<Vec<String>>,
     pub build_system: Option<String>,
-    pub build_dir: Option<PathBuf>,
     pub env: Option<HashMap<String, String>>,
 }
 
 impl MkInfo {
-    pub fn from_root_path(root_path: &Path) -> Result<Self> {
+    pub fn find_root_path(root_path: &Path) -> Result<Option<PathBuf>> {
         let mut mkinfo_iter = MKINFO_FILES
             .iter()
             .map(|mkinfo| root_path.join(mkinfo))
             .filter(|p| p.exists());
 
-        let mkinfo = if let Some(mkinfo) = mkinfo_iter.next() {
+        let path = if let Some(mkinfo) = mkinfo_iter.next() {
             mkinfo
         } else {
-            return Ok(Self::default());
+            return Ok(None);
         };
 
         if let Some(other_mkinfo) = mkinfo_iter.next() {
-            return Err(Error::ConflictingMk(mkinfo, other_mkinfo));
+            return Err(Error::ConflictingMk(path, other_mkinfo));
         }
 
-        Self::from_path(&mkinfo)
+        Ok(Some(path))
+    }
+    pub fn from_root_path(root_path: &Path) -> Result<Self> {
+        Self::from_path(&Self::find_root_path(root_path)?.unwrap_or_default())
     }
 
     pub fn from_path(path: &Path) -> Result<Self> {

@@ -1,5 +1,4 @@
-use std::fs::File;
-use std::io::BufRead;
+use std::{fs::File, io::BufRead, path::PathBuf};
 
 use crate::{project::Project, Error};
 
@@ -39,8 +38,11 @@ impl BuildSystem for Meson {
         Ok(MaybeRoot)
     }
 
-    fn is_configured(&self, project: &Project) -> crate::Result<bool> {
-        Ok(project.build_dir.join("build.ninja").is_file())
+    fn configure_marker(
+        &self,
+        project: &Project,
+    ) -> crate::Result<Option<PathBuf>> {
+        Ok(Some(project.build_dir.join("build.ninja")))
     }
 
     fn configure_command(&self, project: &Project) -> Vec<String> {

@@ -8,11 +8,10 @@ use crate::{
 };
 use std::{
     collections::HashMap,
-    env,
-    fmt::Debug,
-    io,
+    env, io,
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, ExitStatus},
+    time::SystemTime,
 };
 
 use crate::{build_system::BuildSystem, Opts};
@@ -101,8 +100,8 @@ pub fn find_root(path: &Path) -> Result<RootInfo> {
     maybe_build_system.ok_or(Error::NoProjectRootFound)
 }
 
-#[derive(Debug)]
 pub struct Project {
+    pub mk_info_path: Option<PathBuf>,
     pub project_dir: PathBuf,
     pub work_dir: PathBuf,
     pub build_dir: PathBuf,
@@ -123,18 +122,20 @@ impl Project {
             project_dir,
         } = find_root(&work_dir)?;
 
-        let mk_info = if let Ok(mk_info) = env::var("MKINFO") {
-            MkInfo::from_path(&PathBuf::from(mk_info))
+        let mk_info_path = if let Ok(mk_info) = env::var("MKINFO") {
+            Some(PathBuf::from(mk_info))
         } else {
-            MkInfo::from_root_path(&project_dir)
-        }?;
+            MkInfo::find_root_path(&project_dir)?
+        };
+
+        let mk_info = if let Some(mk_info_path) = &mk_info_path {
+            MkInfo::from_path(mk_info_path)?
+        } else {
+            MkInfo::default()
+        };
 
         let configure_args = mk_info.configure.unwrap_or_default();
-        let build_dir = opts
-            .build_dir
-            .clone()
-            .or(mk_info.build_dir)
-            .unwrap_or("build".into());
+        let build_dir = opts.build_dir.clone().unwrap_or("build".into());
         let build_dir = project_dir.join(build_dir);
         let args = if opts.args.is_empty() {
             mk_info.default.unwrap_or_default()
@@ -152,6 +153,7 @@ impl Project {
         let env = mk_info.env.unwrap_or_default();
 
         Ok(Self {
+            mk_info_path,
             project_dir,
             work_dir,
             build_dir,
@@ -174,30 +176,54 @@ impl Project {
             }
         }
     }
-    pub fn run(&self, command: &[String]) -> Result<()> {
+    pub fn run(&self, command: &[String]) -> Result<ExitStatus> {
         Command::new(&command[0])
             .args(command.iter().skip(1))
             .envs(&self.env)
             .current_dir(&self.work_dir)
             .status()
-            .map_err(|e| Error::Command(command[0].clone(), e))?;
-        Ok(())
+            .map_err(|e| Error::Command(command[0].clone(), e))
     }
-    pub fn build(&self) -> Result<()> {
+    pub fn build(&self) -> Result<ExitStatus> {
         let cmd = self.build_system.build_command(self);
         self.run(&cmd)
     }
 
-    pub fn configure(&self) -> Result<()> {
+    pub fn configure(&self) -> Result<ExitStatus> {
         let cmd = self.build_system.configure_command(self);
         if cmd.len() > 1 {
             self.run(&cmd)
         } else {
-            Ok(())
+            Ok(ExitStatus::default())
         }
     }
 
+    fn get_mtime(path: &Path) -> Result<SystemTime> {
+        path.metadata()
+            .and_then(|x| x.modified())
+            .map_err(|e| Error::Io(path.into(), e))
+    }
+
     pub fn is_configured(&self) -> Result<bool> {
-        self.build_system.is_configured(self)
+        let marker =
+            if let Some(marker) = self.build_system.configure_marker(self)? {
+                marker
+            } else {
+                return Ok(true);
+            };
+
+        if !marker.exists() {
+            return Ok(false);
+        }
+
+        let marker_time = Self::get_mtime(&marker)?;
+
+        let mk_info_time = if let Some(mk_info_path) = &self.mk_info_path {
+            Self::get_mtime(mk_info_path)?
+        } else {
+            return Ok(true);
+        };
+
+        Ok(marker_time > mk_info_time)
     }
 }

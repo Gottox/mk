@@ -1,9 +1,11 @@
 use std::{
     io::{self, Write},
     path::PathBuf,
+    process::ExitStatus,
     thread::sleep,
     time::{Duration, SystemTime},
 };
+pub mod build_config;
 pub mod build_system;
 pub mod editor_config;
 pub mod mk_info;
@@ -54,6 +56,7 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Debug, Clone)]
 pub struct Opts {
     args: Vec<String>,
     build_dir: Option<PathBuf>,
@@ -151,6 +154,21 @@ fn try_main() -> Result<()> {
     Ok(())
 }
 
+fn report(status: ExitStatus) {
+    let Some((cols, rows)) = term_size::dimensions() else {
+        return;
+    };
+    print!("\x1b[s\x1b[7l");
+    print!("\x1b[{};{}H", rows, cols - 2);
+    if status.success() {
+        print!("✅");
+    } else {
+        print!("❌");
+    }
+    print!("\x1b[u\x1b[7h");
+    std::io::stdout().flush().unwrap();
+}
+
 fn run(project: &Project, opts: &Opts) -> Result<()> {
     // Clear the screen if we're running in watch mode
     if opts.watch && unsafe { isatty(1) } != 0 {
@@ -159,12 +177,24 @@ fn run(project: &Project, opts: &Opts) -> Result<()> {
         let _ = out.flush();
     }
 
-    if opts.reconfigure || !project.is_configured()? {
+    let conf_result = if opts.reconfigure || !project.is_configured()? {
         project.clean()?;
-        project.configure()?;
+        project.configure()?
+    } else {
+        ExitStatus::default()
+    };
+
+    let result = if conf_result.success() {
+        project.build()?
+    } else {
+        conf_result
+    };
+
+    if opts.watch {
+        report(result);
     }
 
-    project.build()
+    Ok(())
 }
 
 fn main() {

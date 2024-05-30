@@ -11,4 +11,5 @@ notify = "6.1.1"
 serde = { version = "1.0.201", features = ["derive"] }
 serde_ini = "0.2.0"
 serde_yaml = "0.9.34"
+term_size = "0.3.2"
 thiserror = "1.0.60"

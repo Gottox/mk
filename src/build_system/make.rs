@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::project::Project;
 use crate::Result;
 
@@ -22,8 +24,11 @@ impl BuildSystem for Make {
         })
     }
 
-    fn is_configured(&self, _project: &Project) -> crate::Result<bool> {
-        Ok(true)
+    fn configure_marker(
+        &self,
+        _project: &Project,
+    ) -> crate::Result<Option<PathBuf>> {
+        Ok(None)
     }
 
     fn configure_command(&self, _project: &Project) -> Vec<String> {

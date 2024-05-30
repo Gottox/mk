@@ -1,4 +1,6 @@
-use crate::project::Project;
+use std::path::PathBuf;
+
+use crate::{project::Project, Result};
 
 use super::{BuildSystem, RootIdentificationResult};
 
@@ -9,7 +11,7 @@ impl BuildSystem for CMake {
     fn is_project_root(
         &self,
         path: &std::path::Path,
-    ) -> crate::Result<super::RootIdentificationResult> {
+    ) -> Result<super::RootIdentificationResult> {
         use RootIdentificationResult::*;
 
         let cmakelists_path = path.join("CMakeLists.txt");
@@ -19,8 +21,8 @@ impl BuildSystem for CMake {
             Ok(NotRoot)
         }
     }
-    fn is_configured(&self, project: &Project) -> crate::Result<bool> {
-        Ok(project.build_dir.join("build.ninja").is_file())
+    fn configure_marker(&self, project: &Project) -> Result<Option<PathBuf>> {
+        Ok(Some(project.build_dir.join("build.ninja")))
     }
 
     fn configure_command(&self, project: &Project) -> Vec<String> {
