@@ -24,9 +24,19 @@ pub static MKINFO_FILES: &[&str] = &[
     "Mk.yml",
 ];
 
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum ContainerDef {
+    Image(String),
+    Definition {
+        image: String,
+        opts: Option<Vec<String>>,
+    },
+}
+
 #[derive(Debug, Deserialize, Default)]
 pub struct MkInfo {
-    pub image: Option<String>,
+    pub container: Option<ContainerDef>,
     pub default: Option<Vec<String>>,
     pub configure: Option<Vec<String>>,
     pub build_system: Option<String>,
@@ -61,5 +71,20 @@ impl MkInfo {
             std::fs::File::open(path).map_err(|e| Error::Io(path.into(), e))?;
         serde_yaml::from_reader(reader)
             .map_err(|e| Error::SerdeYaml(path.into(), e))
+    }
+
+    pub fn image(&self) -> Option<&str> {
+        match &self.container {
+            Some(ContainerDef::Image(image)) => Some(image),
+            Some(ContainerDef::Definition { image, .. }) => Some(image),
+            None => None,
+        }
+    }
+
+    pub fn container_args(&self) -> Option<&[String]> {
+        match &self.container {
+            Some(ContainerDef::Definition { opts, .. }) => opts.as_deref(),
+            _ => None,
+        }
     }
 }

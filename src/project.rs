@@ -8,7 +8,7 @@ use crate::{
 };
 use std::{
     collections::HashMap,
-    env, io,
+    env, io, iter,
     path::{Path, PathBuf},
     process::{Command, ExitStatus},
     time::SystemTime,
@@ -101,6 +101,8 @@ pub fn find_root(path: &Path) -> Result<RootInfo> {
 }
 
 pub struct Project {
+    pub container_image: Option<String>,
+    pub container_args: Option<Vec<String>>,
     pub mk_info_path: Option<PathBuf>,
     pub project_dir: PathBuf,
     pub work_dir: PathBuf,
@@ -109,6 +111,7 @@ pub struct Project {
     pub args: Vec<String>,
     pub env: HashMap<String, String>,
     pub build_system: &'static (dyn BuildSystem),
+    pub container: bool,
 }
 
 impl Project {
@@ -134,9 +137,12 @@ impl Project {
             MkInfo::default()
         };
 
-        let configure_args = mk_info.configure.unwrap_or_default();
+        let configure_args = mk_info.configure.clone().unwrap_or_default();
         let build_dir = opts.build_dir.clone().unwrap_or("build".into());
         let build_dir = project_dir.join(build_dir);
+        let container = opts.container;
+        let container_image = mk_info.image().map(|x| x.to_string());
+        let container_args = mk_info.container_args().map(|x| x.to_vec());
         let args = if opts.args.is_empty() {
             mk_info.default.unwrap_or_default()
         } else {
@@ -153,6 +159,9 @@ impl Project {
         let env = mk_info.env.unwrap_or_default();
 
         Ok(Self {
+            container,
+            container_image,
+            container_args,
             mk_info_path,
             project_dir,
             work_dir,
@@ -176,7 +185,54 @@ impl Project {
             }
         }
     }
+
+    pub fn find_container_runtime(&self) -> Result<PathBuf> {
+        if let Some(runtime) = std::env::var("CONTAINER_RUNTIME").ok() {
+            return Ok(PathBuf::from(runtime));
+        }
+        let runtimes = ["podman", "docker"];
+        let Ok(path_var) = std::env::var("PATH") else {
+            return Err(Error::NoContainerRuntimeFound);
+        };
+
+        for path in path_var.split(':') {
+            for rt in &runtimes {
+                let path = Path::new(path).join(rt);
+                if path.exists() {
+                    return Ok(path);
+                }
+            }
+        }
+        Err(Error::NoContainerRuntimeFound)
+    }
+
     pub fn run(&self, command: &[String]) -> Result<ExitStatus> {
+        let command = if self.container {
+            let container_image = self
+                .container_image
+                .clone()
+                .ok_or(Error::MissingContainerImage)?;
+            let container_runtime = self.find_container_runtime()?;
+
+            iter::once(container_runtime.to_string_lossy().to_string())
+                .chain([
+                    "run".to_string(),
+                    "-ti".to_string(),
+                    "--rm".to_string(),
+                    "-v".to_string(),
+                    format!("{0}:{0}", self.project_dir.display()),
+                    "--workdir".to_string(),
+                    self.work_dir.display().to_string(),
+                ])
+                .chain(self.env.iter().map(|(k, v)| format!("-e{}={}", k, v)))
+                .chain(self.container_args.clone().unwrap_or_default())
+                .chain(["--".to_string(), container_image])
+                .chain(command.iter().cloned())
+                .collect::<Vec<String>>()
+        } else {
+            command.to_vec()
+        };
+
         Command::new(&command[0])
             .args(command.iter().skip(1))
             .envs(&self.env)

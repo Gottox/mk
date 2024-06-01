@@ -24,6 +24,7 @@ Options:
     -mR: Force reconfigure
     -mC <dir>: Change the current working directory [default: .]
     -mB <dir>: Change the build directory [default: build]
+    -mp: try to build in a container. Needs podman or docker installed
 
 Supported build systems:
 meson/ninja
@@ -52,6 +53,10 @@ pub enum Error {
     Notify(#[from] notify::Error),
     #[error("Missing Argument for {0}")]
     MissingArgument(&'static str),
+    #[error("No container runtime found")]
+    NoContainerRuntimeFound,
+    #[error("Missing container image")]
+    MissingContainerImage,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -64,6 +69,7 @@ pub struct Opts {
     cwd: PathBuf,
     reconfigure: bool,
     watch: bool,
+    container: bool,
 }
 
 impl Opts {
@@ -74,6 +80,7 @@ impl Opts {
         let mut clean = false;
         let mut reconfigure = false;
         let mut watch = false;
+        let mut container = false;
 
         let mut args_iter = std::env::args().skip(1);
         let mut is_first = true;
@@ -90,6 +97,7 @@ impl Opts {
                 "-mw" => watch = true,
                 "-mc" => clean = true,
                 "-mR" => reconfigure = true,
+                "-mp" => container = true,
                 "-mC" => {
                     cwd = args_iter
                         .next()
@@ -114,6 +122,7 @@ impl Opts {
         }
 
         Ok(Self {
+            container,
             args,
             build_dir,
             clean,
