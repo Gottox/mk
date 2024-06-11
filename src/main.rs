@@ -5,7 +5,6 @@ use std::{
     thread::sleep,
     time::{Duration, SystemTime},
 };
-pub mod build_config;
 pub mod build_system;
 pub mod editor_config;
 pub mod mk_info;

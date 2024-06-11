@@ -24,7 +24,14 @@ pub static MKINFO_FILES: &[&str] = &[
     "Mk.yml",
 ];
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
+pub struct MkInfo {
+    #[serde(flatten)]
+    pub base: BuildInfo,
+    pub mode: HashMap<String, BuildInfo>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum ContainerDef {
     Image(String),
@@ -34,8 +41,8 @@ pub enum ContainerDef {
     },
 }
 
-#[derive(Debug, Deserialize, Default)]
-pub struct MkInfo {
+#[derive(Debug, Deserialize, Default, Clone)]
+pub struct BuildInfo {
     pub container: Option<ContainerDef>,
     pub default: Option<Vec<String>>,
     pub configure: Option<Vec<String>>,
@@ -72,7 +79,9 @@ impl MkInfo {
         serde_yaml::from_reader(reader)
             .map_err(|e| Error::SerdeYaml(path.into(), e))
     }
+}
 
+impl BuildInfo {
     pub fn image(&self) -> Option<&str> {
         match &self.container {
             Some(ContainerDef::Image(image)) => Some(image),
@@ -85,6 +94,30 @@ impl MkInfo {
         match &self.container {
             Some(ContainerDef::Definition { opts, .. }) => opts.as_deref(),
             _ => None,
+        }
+    }
+
+    fn merge_field<T, A>(a: Option<T>, b: Option<T>) -> Option<T>
+    where
+        T: Clone + Extend<A> + IntoIterator<Item = A>,
+    {
+        if a.is_some() && b.is_some() {
+            let mut a = a.unwrap();
+            a.extend(b.unwrap());
+            Some(a)
+        } else {
+            a.or(b)
+        }
+    }
+
+    pub fn merge(self, other: Option<Self>) -> Self {
+        let other = other.unwrap_or_default();
+        Self {
+            container: self.container.or(other.container),
+            default: self.default.or(other.default),
+            configure: Self::merge_field(self.configure, other.configure),
+            build_system: self.build_system.or(other.build_system),
+            env: Self::merge_field(self.env, other.env),
         }
     }
 }

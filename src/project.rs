@@ -125,6 +125,11 @@ impl Project {
             project_dir,
         } = find_root(&work_dir)?;
 
+        let mode = if let Ok(mode) = env::var("MKMODE") {
+            mode
+        } else {
+            "default".to_string()
+        };
         let mk_info_path = if let Ok(mk_info) = env::var("MKINFO") {
             Some(PathBuf::from(mk_info))
         } else {
@@ -137,26 +142,32 @@ impl Project {
             MkInfo::default()
         };
 
-        let configure_args = mk_info.configure.clone().unwrap_or_default();
+        let mut build_info = mk_info.base;
+        for mode in mode.split_whitespace() {
+            build_info = build_info.merge(mk_info.mode.get(mode).cloned());
+        }
+
+        let configure_args = build_info.configure.clone().unwrap_or_default();
         let build_dir = opts.build_dir.clone().unwrap_or("build".into());
         let build_dir = project_dir.join(build_dir);
         let container = opts.container;
-        let container_image = mk_info.image().map(|x| x.to_string());
-        let container_args = mk_info.container_args().map(|x| x.to_vec());
+        let container_image = build_info.image().map(|x| x.to_string());
+        let container_args = build_info.container_args().map(|x| x.to_vec());
         let args = if opts.args.is_empty() {
-            mk_info.default.unwrap_or_default()
+            build_info.default.unwrap_or_default()
         } else {
             opts.args.clone()
         };
 
-        let build_system = if let Some(build_system) = mk_info.build_system {
-            build_system_from_str(&build_system)
-        } else {
-            build_system
-        }
-        .ok_or(Error::NoBuildSystemFound)?;
+        let build_system =
+            if let Some(build_system) = build_info.build_system {
+                build_system_from_str(&build_system)
+            } else {
+                build_system
+            }
+            .ok_or(Error::NoBuildSystemFound)?;
 
-        let env = mk_info.env.unwrap_or_default();
+        let env = build_info.env.unwrap_or_default();
 
         Ok(Self {
             container,
@@ -187,7 +198,7 @@ impl Project {
     }
 
     pub fn find_container_runtime(&self) -> Result<PathBuf> {
-        if let Some(runtime) = std::env::var("CONTAINER_RUNTIME").ok() {
+        if let Ok(runtime) = std::env::var("CONTAINER_RUNTIME") {
             return Ok(PathBuf::from(runtime));
         }
         let runtimes = ["podman", "docker"];
