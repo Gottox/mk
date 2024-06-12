@@ -156,7 +156,7 @@ impl Project {
         let container_image = build_info.image().map(|x| x.to_string());
         let container_args = build_info.container_args().map(|x| x.to_vec());
         let args = if opts.args.is_empty() {
-            build_info.default.unwrap_or_default()
+            build_info.default.unwrap_or_default().into()
         } else {
             opts.args.clone()
         };

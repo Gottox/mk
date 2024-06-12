@@ -41,10 +41,32 @@ pub enum ContainerDef {
     },
 }
 
+#[derive(Debug, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum StringOrArray {
+    String(String),
+    Array(Vec<String>),
+}
+
+impl From<StringOrArray> for Vec<String> {
+    fn from(val: StringOrArray) -> Self {
+        match val {
+            StringOrArray::String(s) => vec![s],
+            StringOrArray::Array(a) => a,
+        }
+    }
+}
+
+impl Default for StringOrArray {
+    fn default() -> Self {
+        StringOrArray::Array(vec![])
+    }
+}
+
 #[derive(Debug, Deserialize, Default, Clone)]
 pub struct BuildInfo {
     pub container: Option<ContainerDef>,
-    pub default: Option<Vec<String>>,
+    pub default: Option<StringOrArray>,
     pub configure: Option<Vec<String>>,
     pub build_system: Option<String>,
     pub env: Option<HashMap<String, String>>,
@@ -69,6 +91,7 @@ impl MkInfo {
 
         Ok(Some(path))
     }
+
     pub fn from_root_path(root_path: &Path) -> Result<Self> {
         Self::from_path(&Self::find_root_path(root_path)?.unwrap_or_default())
     }
