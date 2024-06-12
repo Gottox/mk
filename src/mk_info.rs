@@ -28,7 +28,7 @@ pub static MKINFO_FILES: &[&str] = &[
 pub struct MkInfo {
     #[serde(flatten)]
     pub base: BuildInfo,
-    pub mode: HashMap<String, BuildInfo>,
+    pub mode: Option<HashMap<String, BuildInfo>>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

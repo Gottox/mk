@@ -143,8 +143,10 @@ impl Project {
         };
 
         let mut build_info = mk_info.base;
-        for mode in mode.split_whitespace() {
-            build_info = build_info.merge(mk_info.mode.get(mode).cloned());
+        if let Some(mode_info) = mk_info.mode {
+            for mode in mode.split_whitespace() {
+                build_info = build_info.merge(mode_info.get(mode).cloned());
+            }
         }
 
         let configure_args = build_info.configure.clone().unwrap_or_default();
