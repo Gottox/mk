@@ -4,7 +4,6 @@ use std::path::Path;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
-
 pub struct EditorConfig {
     #[serde(default)]
     pub root: bool,

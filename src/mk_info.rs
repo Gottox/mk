@@ -1,9 +1,11 @@
 use std::{
     collections::HashMap,
+    fs::File,
     path::{Path, PathBuf},
 };
 
 use crate::{Error, Result};
+use same_file::is_same_file;
 use serde::Deserialize;
 
 pub static MKINFO_FILES: &[&str] = &[
@@ -86,7 +88,11 @@ impl MkInfo {
         };
 
         if let Some(other_mkinfo) = mkinfo_iter.next() {
-            return Err(Error::ConflictingMk(path, other_mkinfo));
+            if !is_same_file(&path, &other_mkinfo)
+                .map_err(|x| Error::Io(path.clone(), x))?
+            {
+                return Err(Error::ConflictingMk(path, other_mkinfo));
+            }
         }
 
         Ok(Some(path))
@@ -97,8 +103,7 @@ impl MkInfo {
     }
 
     pub fn from_path(path: &Path) -> Result<Self> {
-        let reader =
-            std::fs::File::open(path).map_err(|e| Error::Io(path.into(), e))?;
+        let reader = File::open(path).map_err(|e| Error::Io(path.into(), e))?;
         serde_yaml::from_reader(reader)
             .map_err(|e| Error::SerdeYaml(path.into(), e))
     }

@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 libc = "0.2.155"
 notify = "6.1.1"
+same-file = "1.0.6"
 serde = { version = "1.0.201", features = ["derive"] }
 serde_ini = "0.2.0"
 serde_yaml = "0.9.34"
